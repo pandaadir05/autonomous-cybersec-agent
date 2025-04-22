@@ -1,0 +1,62 @@
+# Autonomous Cybersecurity Defense Agent - Example Configuration
+# This file demonstrates all available configuration options with comments
+
+# Agent configuration
+agent:
+  # System settings
+  system:
+    name: "Autonomous Cybersecurity Defense Agent"
+    health_check_interval: 120  # Health check interval in seconds
+  
+  # Detection settings
+  detection:
+    interval: 60  # Detection interval in seconds
+    enabled_modules:
+      - network
+      - system
+      - log_analysis
+    thresholds:
+      network_anomaly: 0.8  # Threshold for network anomalies (0.0-1.0)
+      system_anomaly: 0.7   # Threshold for system anomalies (0.0-1.0)
+      log_anomaly: 0.75     # Threshold for log anomalies (0.0-1.0)
+  
+  # Response settings
+  response:
+    auto_response: true  # Enable automatic responses to detected threats
+    max_severity: 3      # Maximum severity level for auto-response (1-5)
+    cooldown_period: 300  # Time in seconds between similar responses
+    
+    # Notification settings
+    notification:
+      email: false  # Enable email notifications
+      email_recipients:
+        - "admin@example.com"
+        - "security@example.com"
+      slack: false  # Enable Slack notifications
+      slack_webhook: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+      webhook: false  # Enable generic webhook notifications
+      webhook_url: "https://example.com/webhook/security"
+  
+  # Analytics settings
+  analytics:
+    interval: 300         # Analytics processing interval in seconds
+    retention_days: 30    # Data retention period in days
+    ml_enabled: false     # Enable machine learning analytics
+  
+  # Logging settings
+  logging:
+    level: "INFO"              # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    file: "logs/agent.log"     # Main log file location
+    max_size_mb: 10            # Maximum log file size in MB before rotation
+    backup_count: 5            # Number of backup log files to keep
+    security_log_file: "logs/security.log"  # Security events log file
+  
+  # Configuration profile to use
+  # Available profiles: default, development, production, testing
+  profile: "default"
+
+# Environment configuration (for simulations)
+environment:
+  num_hosts: 10                # Number of hosts in simulated environment
+  max_steps: 500               # Maximum steps in simulation
+  attack_probability: 0.1      # Probability of attack in each step
