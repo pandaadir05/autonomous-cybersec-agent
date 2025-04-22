@@ -28,16 +28,16 @@ agent:
     max_severity: 3  # Maximum severity level for auto-response (1-5)
     cooldown_period: 300  # seconds
     notification:
-      email: false
+      email: true  # Change to true
       email_config:
-        smtp_server: "smtp.example.com"
+        smtp_server: "smtp.gmail.com"  # Update with your SMTP server
         smtp_port: 587
         use_tls: true
-        sender: "security@example.com"
-        username: "security@example.com"
-        password: ""
+        sender: "your-email@example.com"  # Your email
+        username: "your-email@example.com"
+        password: "your-password-or-app-password"  # Use app password for Gmail
       email_recipients:
-        - "admin@example.com"
+        - "recipient@example.com"  # Email to receive alerts
       slack: false
       slack_config:
         webhook_url: ""

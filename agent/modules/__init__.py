@@ -1,5 +1,5 @@
 """
-Agent modules package for the Autonomous Cybersecurity Defense Agent.
+Functional modules for the autonomous cybersecurity defense agent.
 """
 
 # Explicitly export modules to make imports cleaner

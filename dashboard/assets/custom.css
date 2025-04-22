@@ -1,0 +1,840 @@
+/* LESH Cybersecurity Dashboard - Advanced Styling */
+
+/* Base Variables */
+:root {
+    --primary-bg: #0c0e14;
+    --secondary-bg: #131725;
+    --panel-bg: rgba(19, 23, 37, 0.8);
+    --header-bg: rgba(26, 32, 48, 0.95);
+    --accent-blue: #0078d4;
+    --accent-cyan: #00bcf2;
+    --accent-purple: #8661c5;
+    --accent-teal: #00b294;
+    --accent-red: #d13438;
+    --accent-orange: #ff8c00;
+    --accent-green: #107c10;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #888888;
+    --border-color: rgba(99, 123, 167, 0.3);
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Global styling */
+body {
+    background-color: var(--primary-bg);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    padding: 1rem;
+    max-width: 100%;
+    margin: 0;
+    position: relative;
+    background-color: var(--primary-bg);
+    min-height: 100vh;
+}
+
+/* Cyber grid background effect */
+.cyber-grid-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(64, 86, 124, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(64, 86, 124, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Cyber particles - adds floating dots */
+.cyber-particles::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle, rgba(100, 150, 255, 0.15) 1px, transparent 1px);
+    background-size: 70px 70px;
+    z-index: -1;
+    pointer-events: none;
+    animation: pulse-grid 15s infinite linear;
+}
+
+@keyframes pulse-grid {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+}
+
+/* Header styling */
+.dashboard-header {
+    padding: 1.2rem;
+    border-radius: 10px;
+    background: var(--header-bg);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--box-shadow);
+    position: relative;
+    z-index: 10;
+    margin-bottom: 20px;
+}
+
+/* Logo styling */
+.dashboard-logo {
+    display: flex;
+    align-items: center;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.logo-text {
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.dashboard-title-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-title {
+    font-size: 1.5rem;
+    margin: 0;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.header-subtitle {
+    font-size: 0.8rem;
+    margin: 0;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Segoe UI', monospace;
+    opacity: 0.8;
+}
+
+/* Time display */
+.time-container {
+    text-align: right;
+}
+
+.time-display, .uptime-display {
+    font-family: 'Consolas', monospace;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+/* Status indicators */
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 10px;
+    position: relative;
+}
+
+.status-indicator::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.secure {
+    background-color: var(--accent-green);
+}
+
+.status-indicator.warning {
+    background-color: var(--accent-orange);
+}
+
+.status-indicator.critical {
+    background-color: var(--accent-red);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    70% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* Smaller status indicators for footer */
+.status-indicator-small {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.status-indicator-small.online {
+    background-color: var(--accent-green);
+    box-shadow: 0 0 5px var(--accent-green);
+}
+
+.status-indicator-small.offline {
+    background-color: var(--accent-red);
+    box-shadow: 0 0 5px var(--accent-red);
+}
+
+/* Dashboard sidebar with metric cards */
+.dashboard-sidebar {
+    position: relative;
+    z-index: 5;
+}
+
+.metric-card {
+    background: var(--panel-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--box-shadow);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.metric-header {
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.card-header-text {
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 500;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+}
+
+.metric-container {
+    text-align: center;
+    padding: 0.8rem 0.5rem;
+}
+
+.metric-value {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary) !important;
+    text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.metric-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0.2rem;
+}
+
+/* Health indicator - with improved spacing */
+.health-indicator {
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 5px;
+    letter-spacing: 0.5px;
+    text-align: center;
+    width: 90px;
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    margin-right: 15px;
+}
+
+.health-indicator.healthy {
+    background-color: rgba(16, 124, 16, 0.7);
+    color: white;
+}
+
+.health-indicator.warning {
+    background-color: rgba(255, 140, 0, 0.7);
+    color: white;
+}
+
+.health-indicator.critical {
+    background-color: rgba(209, 52, 56, 0.7);
+    color: white;
+    animation: pulse-health 2s infinite;
+}
+
+@keyframes pulse-health {
+    0% { box-shadow: 0 0 0 0 rgba(209, 52, 56, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(209, 52, 56, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(209, 52, 56, 0); }
+}
+
+/* Resource metrics */
+.resources-container {
+    margin-top: 1rem;
+}
+
+.resource-item {
+    margin-bottom: 0.8rem;
+}
+
+.resource-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+}
+
+.resource-label {
+    color: var(--text-secondary);
+    font-family: 'Consolas', monospace;
+}
+
+.resource-value {
+    color: var(--text-primary);
+    font-family: 'Consolas', monospace;
+    font-weight: 600;
+}
+
+.resource-bar {
+    height: 0.5rem !important;
+    border-radius: 5px;
+}
+
+/* Security feed */
+.security-feed {
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.feed-item {
+    display: flex;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.feed-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.8rem;
+    flex-shrink: 0;
+}
+
+.feed-icon.critical {
+    background-color: rgba(209, 52, 56, 0.2);
+    color: #e74c3c;
+}
+
+.feed-icon.high {
+    background-color: rgba(255, 140, 0, 0.2);
+    color: #f39c12;
+}
+
+.feed-icon.medium {
+    background-color: rgba(0, 188, 242, 0.2);
+    color: #3498db;
+}
+
+.feed-icon.info {
+    background-color: rgba(16, 124, 16, 0.2);
+    color: #2ecc71;
+}
+
+.feed-content {
+    flex: 1;
+}
+
+.feed-text {
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+
+.feed-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: 'Consolas', monospace;
+}
+
+/* Visualization cards */
+.visualization-card {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 15px;
+}
+
+/* Custom tabs */
+.custom-tabs {
+    margin-bottom: 1rem;
+}
+
+.custom-tab {
+    background-color: rgba(19, 23, 37, 0.7);
+    border-radius: 5px 5px 0 0;
+    padding: 0.7rem 1.5rem;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+    color: var(--text-secondary);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.custom-tab:hover {
+    background-color: rgba(27, 32, 52, 0.8);
+    color: var(--text-primary);
+}
+
+.custom-tab-active {
+    background-color: var(--accent-blue);
+    background: linear-gradient(135deg, var(--accent-blue), #106ebe);
+    color: white;
+    font-weight: 600;
+}
+
+/* Charts containers */
+.chart-container {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--secondary-bg) !important;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 15px;
+}
+
+.map-container {
+    min-height: 450px;
+}
+
+/* Fix for plotly visualizations on dark backgrounds */
+.js-plotly-plot .plotly .main-svg {
+    background-color: transparent !important;
+}
+
+.plotly-graph-div {
+    background-color: transparent !important;
+}
+
+.js-plotly-plot .plotly .modebar {
+    background-color: transparent !important;
+}
+
+/* Make text and elements more visible */
+.js-plotly-plot text {
+    fill: white !important;
+    font-weight: 500 !important;
+    text-shadow: 0px 0px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* Enhance contrast for axis lines */
+.js-plotly-plot .plotly path.xgrid, 
+.js-plotly-plot .plotly path.ygrid {
+    stroke: rgba(150, 150, 150, 0.2) !important;
+}
+
+.js-plotly-plot .plotly .xtick text, 
+.js-plotly-plot .plotly .ytick text {
+    fill: #e0e0e0 !important;
+    font-size: 10px !important;
+}
+
+/* Ensure chart titles are visible */
+.gtitle {
+    fill: white !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+}
+
+/* Alert styles */
+.alert-filters {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.filter-btn {
+    margin-right: 5px;
+    padding: 0.35rem 1.2rem;
+    font-size: 0.85rem;
+    border-radius: 5px;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.filter-btn.active {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.alerts-log {
+    max-height: 600px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 0 5px;
+}
+
+.alert-item {
+    background-color: rgba(19, 23, 37, 0.7);
+    border-radius: 5px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.alert-item:hover {
+    transform: translateX(3px);
+    background-color: rgba(27, 32, 52, 0.8);
+}
+
+.alert-item.severity-critical {
+    border-color: var(--accent-red);
+}
+
+.alert-item.severity-high {
+    border-color: var(--accent-orange);
+}
+
+.alert-item.severity-medium {
+    border-color: var(--accent-cyan);
+}
+
+.alert-item.severity-low {
+    border-color: var(--accent-green);
+}
+
+.alert-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.alert-time {
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.alert-severity {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-weight: bold;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.alert-severity.severity-critical {
+    background-color: rgba(209, 52, 56, 0.2);
+    color: #ff4136;
+}
+
+.alert-severity.severity-high {
+    background-color: rgba(255, 140, 0, 0.2);
+    color: #ff851b;
+}
+
+.alert-severity.severity-medium {
+    background-color: rgba(0, 188, 242, 0.2);
+    color: #00bcf2;
+}
+
+.alert-severity.severity-low {
+    background-color: rgba(16, 124, 16, 0.2);
+    color: #2ecc40;
+}
+
+.alert-message {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.alert-details {
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.alert-detail {
+    margin-right: 1rem;
+    font-family: 'Consolas', monospace;
+}
+
+/* Advanced analytics section */
+.advanced-analytics-container {
+    padding: 1.5rem;
+    background: rgba(19, 23, 37, 0.4);
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--border-color);
+}
+
+.analytics-section {
+    padding: 1rem;
+}
+
+.analytics-title {
+    font-family: 'Segoe UI', sans-serif;
+    color: var(--accent-blue);
+    font-size: 1.2rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.5rem;
+}
+
+.analytics-subtitle {
+    font-family: 'Consolas', monospace;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text-muted);
+}
+
+.threat-vectors-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.threat-vector-item {
+    margin-bottom: 1rem;
+}
+
+.vector-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.vector-score {
+    font-family: 'Consolas', monospace;
+    color: var(--accent-blue);
+}
+
+.vector-bar {
+    height: 0.5rem !important;
+    border-radius: 5px;
+    margin-top: 0.3rem;
+}
+
+.ml-metrics-section {
+    margin-bottom: 2rem;
+}
+
+.ml-metrics-container {
+    background: rgba(19, 23, 37, 0.4);
+    border-radius: 5px;
+    padding: 1rem;
+}
+
+.ml-metric-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.metric-label {
+    color: var(--text-muted);
+}
+
+.metric-value {
+    font-family: 'Consolas', monospace;
+    color: var(--accent-blue);
+}
+
+.recommendations-list {
+    padding-left: 1.5rem;
+}
+
+.recommendations-list li {
+    margin-bottom: 0.8rem;
+    line-height: 1.5;
+}
+
+/* Footer styles */
+.dashboard-footer {
+    margin-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 1rem;
+}
+
+.footer-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.footer-brand {
+    font-weight: 500;
+}
+
+.footer-dot {
+    margin: 0 0.5rem;
+}
+
+.footer-version {
+    font-family: 'Consolas', monospace;
+}
+
+.system-statuses {
+    display: flex;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    margin-left: 1.5rem;
+}
+
+.status-label {
+    margin-right: 0.3rem;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Plot background fix */
+.js-plotly-plot .bg {
+    fill: rgba(19, 23, 37, 0.7) !important;
+}
+
+/* Ensure grid lines are visible */
+.js-plotly-plot .plotly path.xgrid, 
+.js-plotly-plot .plotly path.ygrid {
+    stroke: rgba(200, 200, 220, 0.2) !important;
+    stroke-width: 1px !important;
+}
+
+/* Force legend to be visible */
+.js-plotly-plot .legend .bg {
+    fill: rgba(30, 40, 60, 0.8) !important;
+    stroke: rgba(200, 200, 255, 0.3) !important;
+}
+
+.js-plotly-plot .legend text {
+    fill: white !important;
+    font-size: 11px !important;
+}
+
+/* Additional element styles for Azure look */
+.azure-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 16px;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 20px;
+}
+
+.azure-panel-header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+/* Status badge for system components */
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge-success {
+    background-color: rgba(16, 124, 16, 0.2);
+    color: #2ecc40;
+    border: 1px solid rgba(16, 124, 16, 0.3);
+}
+
+.status-badge-warning {
+    background-color: rgba(255, 140, 0, 0.2);
+    color: #ff8c00;
+    border: 1px solid rgba(255, 140, 0, 0.3);
+}
+
+.status-badge-error {
+    background-color: rgba(209, 52, 56, 0.2);
+    color: #ff4136;
+    border: 1px solid rgba(209, 52, 56, 0.3);
+}
+
+/* 3D Visualization specific styles */
+.scene-container .svg-container {
+    background-color: rgba(19, 23, 37, 0.4) !important;
+}
+
+/* Force the chart backgrounds to be visible */
+.chart-wrapper {
+    background-color: rgba(19, 23, 37, 0.7) !important;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 1rem;
+    border-radius: 8px;
+}

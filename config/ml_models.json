@@ -1,0 +1,47 @@
+{
+  "models_directory": "models",
+  "active_models": ["anomaly_detector", "threat_classifier"],
+  "anomaly_detector": {
+    "type": "isolation_forest",
+    "file": "anomaly_detector.pkl",
+    "threshold": 0.85,
+    "features": [
+      "bytes_in", "bytes_out", "packets_in", "packets_out",
+      "avg_packet_size", "connection_duration"
+    ],
+    "hyperparameters": {
+      "contamination": 0.1,
+      "max_samples": 100,
+      "random_state": 42
+    }
+  },
+  "threat_classifier": {
+    "type": "random_forest",
+    "file": "threat_classifier.pkl",
+    "threshold": 0.7,
+    "features": [
+      "bytes_in", "bytes_out", "packets_in", "packets_out",
+      "port", "protocol", "src_entropy", "dst_entropy"
+    ],
+    "hyperparameters": {
+      "n_estimators": 100,
+      "max_depth": 10,
+      "random_state": 42
+    }
+  },
+  "behavior_analyzer": {
+    "type": "lstm",
+    "file": "behavior_analyzer.h5",
+    "sequence_length": 10,
+    "features": [
+      "process_cpu", "process_memory", "open_files",
+      "network_connections", "api_calls"
+    ],
+    "hyperparameters": {
+      "units": 64,
+      "dropout": 0.2,
+      "batch_size": 32,
+      "epochs": 50
+    }
+  }
+}

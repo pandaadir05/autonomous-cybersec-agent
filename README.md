@@ -6,22 +6,19 @@
 
 An intelligent security solution that autonomously detects and responds to cybersecurity threats in real-time, combining traditional rule-based detection methods with advanced machine learning algorithms.
 
-<p align="center">
-  <img src="docs/images/lesh-logo.png" alt="Lesh Logo" width="250"/>
-</p>
-
 ## 📋 Table of Contents
+
 - [Overview](#-overview)
 - [Key Features](#-key-features)
-- [Architecture](#-architecture)
 - [Installation](#-installation)
 - [Quick Start Guide](#-quick-start-guide)
 - [Configuration](#-configuration)
-- [Usage](#-usage)
+- [Detection Modules](#-detection-modules)
+- [Dashboard](#-dashboard)
+- [Machine Learning Models](#-machine-learning-models)
 - [API Reference](#-api-reference)
-- [Machine Learning Components](#-machine-learning-components)
 - [Development](#-development)
-- [Contributing](#-contributing)
+- [Testing](#-testing)
 - [License](#-license)
 - [Troubleshooting](#-troubleshooting)
 
@@ -29,100 +26,28 @@ An intelligent security solution that autonomously detects and responds to cyber
 
 Lesh is a comprehensive security solution designed to monitor, detect, and automatically respond to cyber threats with minimal human intervention. It leverages both rule-based detection and advanced machine learning to identify known and unknown threats, providing robust protection for your infrastructure.
 
-The agent continuously monitors network traffic, system behavior, and log files to detect suspicious activities. When threats are identified, it can automatically respond with appropriate actions based on your configuration, from blocking connections to isolating systems and sending notifications.
-
-This agent is ideal for organizations looking to:
-- Strengthen their security posture
-- Reduce the operational burden on security teams
-- Gain visibility into security threats
-- Implement automated incident response
-- Integrate security controls across systems
-
 ## ✨ Key Features
 
 ### Detection Capabilities
-- **Real-time network monitoring**: Deep packet inspection and traffic analysis
-- **Behavioral analysis**: Detection of unusual system and user activities
-- **Log analysis**: Identification of security events in system and application logs
-- **Machine learning-based anomaly detection**: Identification of unknown threats using multiple algorithms:
-  - Autoencoder neural networks
-  - Isolation Forest
-  - Local Outlier Factor (LOF)
-  - DBSCAN clustering
-  - One-Class SVM
-- **MITRE ATT&CK framework integration**: Detection mapped to known adversary techniques
+
+- **Network Anomaly Detection**: Identifies unusual patterns in network traffic
+- **Malware Detection**: Scans for malicious software and suspicious behaviors
+- **Compliance Checking**: Ensures system configurations adhere to security best practices
+- **Machine Learning-based Detection**: Uses isolation forest algorithm for anomaly detection
 
 ### Response Capabilities
+
 - **Automated threat containment**: Isolation of compromised systems
 - **Connection blocking**: Prevention of malicious network traffic
 - **Process termination**: Stopping of suspicious executables
-- **Customizable response policies**: Tailored actions based on threat severity
-- **Incident documentation**: Automatic recording of threat details and responses
-- **Simulation mode**: Test detection and response without making actual system changes
+- **Notification systems**: Email alerts for security incidents
 
-### Management Features
-- **Intuitive configuration system**: YAML-based configuration with validation
-- **Comprehensive logging**: Detailed event tracking with rotation support
-- **Notifications**: Email, Slack, and webhook integrations
-- **Performance metrics**: Monitoring of agent efficiency and effectiveness
-- **Interactive mode**: Command-line interface for direct control
-- **Web API**: REST interface for integration with other security tools
+### Visualization & Monitoring
 
-## 🏗️ Architecture
-
-Lesh uses a modular architecture designed for flexibility and extensibility:
-
-```
-┌────────────────────────┐
-│     Agent Core         │
-└───────────┬────────────┘
-            │
-┌───────────┼────────────┐
-│           │            │
-▼           ▼            ▼
-┌────────┐  ┌────────┐  ┌────────┐
-│Detection│  │Response│  │Analytics│
-└────┬───┘  └────┬───┘  └────┬───┘
-     │           │           │
-     ▼           ▼           ▼
-┌──────────────────────────────┐
-│            Utils             │
-│ Logger, Config, Healthcheck  │
-└──────────────────────────────┘
-```
-
-### Components:
-
-- **Core**: Central orchestration and management
-  - Agent lifecycle management
-  - Component coordination
-  - State management
-  
-- **Modules**:
-  - **Threat Detection**: Real-time monitoring and threat identification
-    - Network traffic analysis
-    - System activity monitoring
-    - Log file scanning
-    - Anomaly detection models
-  
-  - **Response**: Automated defense mechanisms
-    - Network blocking (IP, port, protocol)
-    - Process management (termination, isolation)
-    - User account management
-    - System isolation
-    - Notifications (email, Slack, webhooks)
-  
-  - **Analytics**: Data processing and insights generation
-    - Traffic pattern analysis
-    - Threat intelligence correlation
-    - Performance metrics
-    - Visualization tools
-    - Threat hunting support
-  
-- **Utils**:
-  - **Logger**: Comprehensive logging system with rotation
-  - **Config**: Configuration management with validation
-  - **Healthcheck**: System health monitoring
+- **Interactive Dashboard**: Real-time monitoring of security events
+- **System Health Monitoring**: Track system resource usage
+- **Security Events Timeline**: Chronological view of detected threats
+- **Severity Distribution**: Visual breakdown of threat severity
 
 ## 📦 Installation
 
@@ -130,234 +55,175 @@ Lesh uses a modular architecture designed for flexibility and extensibility:
 
 - Python 3.8 or higher
 - pip package manager
-- Network access for dependency installation
-- Sufficient privileges for security monitoring (varies by OS)
 
 ### Basic Installation
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/lesh.git
-cd lesh
-```
+# Clone the repository
+git clone https://github.com/your-username/autonomous-cybersec-agent.git
+cd autonomous-cybersec-agent
 
-2. Install dependencies:
-```bash
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
 ```
-
-3. Generate example configuration:
-```bash
-python -m agent.config.generate_example
-```
-
-4. Edit the configuration in `config/config.yaml` according to your needs
-
-### Docker Installation
-
-For containerized deployment:
-
-```bash
-# Build the Docker image
-docker build -t lesh-agent .
-
-# Run the container
-docker run -d --name lesh-agent-instance \
-  -v ./config:/app/config \
-  -v ./logs:/app/logs \
-  --network host \
-  lesh-agent
-```
-
-### System Requirements
-
-- **Minimum**: 2 CPU cores, 4GB RAM, 20GB disk space
-- **Recommended**: 4+ CPU cores, 8GB+ RAM, 50GB+ disk space
-- **Network**: Access to monitored interfaces
-- **Permissions**: Administrative/root for certain detection & response capabilities
 
 ## 🚀 Quick Start Guide
 
-Get up and running with Lesh in minutes:
+1. **Run the complete agent with dashboard and API**:
 
-1. **Install dependencies**:
 ```bash
+python run.py --all
+```
+
+2. **Run only specific components**:
+
+```bash
+# Run only the dashboard
+python run.py --dashboard
+
+# Run only the API server
+python run.py --api
+
+# Run only the security agent
+python run.py --agent
+```
+
+3. **Access the dashboard**:
+
+Open your web browser and navigate to: `http://localhost:8050`
+
+## 🔎 Detection Modules
+
+The agent includes several detection modules:
+
+### Network Anomaly Detection
+
+Monitors network traffic for unusual patterns such as:
+- Connection count spikes
+- Bandwidth usage anomalies
+- Packet rate anomalies
+
+### Malware Detection
+
+Scans for malicious software by:
+- Checking file hashes against known malware signatures
+- Analyzing file contents for suspicious patterns
+- Focusing on potentially dangerous file types
+
+### Compliance Checking
+
+Ensures system configuration meets security best practices:
+- Password policy compliance
+- Firewall configuration
+- System update settings
+- Running services audit
+
+## 📊 Dashboard
+
+The dashboard provides real-time monitoring and visualization:
+
+- **Active Threats Counter**: Number of current high-severity threats
+- **Events Today**: Count of security events in the past 24 hours
+- **System Health**: Overall status based on system metrics
+- **Security Events Timeline**: Chronological view of detected threats
+- **Event Severity Distribution**: Breakdown of threats by severity level
+- **System Metrics**: CPU, memory, disk usage, and network traffic
+
+To access the dashboard, run:
+
+```bash
+python run.py --dashboard
+```
+
+# 🛡️ LESH: Advanced Cybersecurity Dashboard
+
+## 📊 Enhanced Cybersecurity Dashboard
+
+The new dashboard provides real-time monitoring with advanced visualization capabilities:
+
+- **Interactive Security Visualizations**: Dynamic threat maps, timelines, and 3D visualizations
+- **Real-time Metrics**: Active threats, system health, and security event tracking  
+- **Multi-tab Interface**: Organize security data into Overview, Network, System, Alerts and Advanced tabs
+- **Advanced Analytics**: AI-powered threat analysis and predictive metrics
+
+### Running the Dashboard
+
+To run the dashboard:
+
+```bash
+# Install required dependencies first
 pip install -r requirements.txt
+
+# Start the dashboard
+python run.py --dashboard
+
+# Or run all components together
+python run.py --all
 ```
 
-2. **Set up configuration**:
-```bash
-# Copy example config file
-cp config/example_config.yaml config/config.yaml
-```
+Then open your web browser and navigate to: `http://localhost:8050`
 
-3. **Start the agent in development mode**:
-```bash
-python run_agent.py --profile development --simulate
-```
+### Dashboard Features
 
-4. **Access the interactive console**:
-```bash
-python run_agent.py --interactive
-```
+1. **Security Status Monitoring**: Real-time status indicators show current threat levels
+2. **Threat Analysis**: View detailed breakdowns of security events by severity and type
+3. **Network Visualization**: Interactive network topology map showing attack patterns
+4. **System Health**: Monitor system resource usage and health metrics
+5. **Alert Management**: Filter and review security alerts by severity
+6. **Advanced 3D Visualization**: Explore the threat landscape in 3D with the advanced view
 
-5. **Start the API server**:
-```bash
-python -m src.api.server
-```
+### Dashboard Screenshots
 
-## ⚙️ Configuration
+![Dashboard Overview](assets/dashboard_overview.png)
 
-Lesh uses a flexible, hierarchical configuration system with validation:
+## 🧠 Machine Learning Models
 
-### Configuration Files
+The agent uses machine learning for advanced threat detection:
 
-- `config/config.yaml`: Main configuration file
-- `config/profiles/*.yaml`: Environment-specific configuration profiles
-- `agent/config/defaults.py`: Default values
-- `agent/config/schema.py`: Configuration schema with validation
+### Available Models
 
-### Configuration Profiles
+- **Anomaly Detector**: Identifies unusual network traffic patterns
+- **Threat Classifier**: Categorizes detected anomalies by threat type
+- **Behavior Analyzer**: Tracks and flags unusual system behavior
 
-The agent supports multiple configuration profiles for different environments:
+### Training the Models
 
-- **default**: Standard balanced configuration
-- **development**: Enhanced logging for development work
-- **production**: More aggressive detection and conservative response
-- **testing**: Limited response actions for testing
-
-To specify a profile:
-```bash
-python run_agent.py --profile development
-```
-
-### Example Configuration
-
-```yaml
-# Agent configuration
-agent:
-  # System settings
-  system:
-    name: "Lesh: Autonomous Cybersecurity Defense Agent"
-    health_check_interval: 120  # seconds
-  
-  # Detection settings
-  detection:
-    interval: 60  # seconds
-    enabled_modules:
-      - network
-      - system
-      - log_analysis
-    thresholds:
-      network_anomaly: 0.8  # 0.0-1.0
-      system_anomaly: 0.7   # 0.0-1.0
-  
-  # Response settings
-  response:
-    auto_response: true
-    max_severity: 3  # 1-5
-    cooldown_period: 300  # seconds
-    notification:
-      email: true
-      email_recipients:
-        - "admin@example.com"
-  
-  # Logging settings
-  logging:
-    level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    file: "logs/agent.log"
-    
-  # Select configuration profile
-  profile: "default"
-```
-
-### Environment Variables
-
-Configuration can be overridden using environment variables:
+To train the machine learning models:
 
 ```bash
-# Example environment variable overrides
-export LESH_AGENT_NAME="Production Security Agent"
-export LESH_LOG_LEVEL="DEBUG"
-export LESH_AUTO_RESPONSE=true
-export LESH_PROFILE="production"
+python train_models.py
 ```
 
-## 🚀 Usage
-
-### Basic Usage
-
-Run the agent with the default configuration:
+To train with custom data:
 
 ```bash
-python run_agent.py
+python train_models.py --data your_data.csv
 ```
 
-### Command-line Options
+### Customizing Model Parameters
+
+Edit the ML configuration file:
 
 ```bash
-python run_agent.py --help
-```
-
-Available options:
-- `--config PATH`: Specify configuration file path
-- `--verbose`: Enable verbose logging
-- `--simulate`: Run in simulation mode without making system changes
-- `--interactive`: Run in interactive mode with command shell
-- `--profile NAME`: Use specific configuration profile
-
-### Interactive Mode
-
-In interactive mode, Lesh provides a command-line interface:
-
-```bash
-> help
-Available commands:
-  status - Show agent status and statistics
-  scan - Run manual threat scan
-  block [IP] - Block IP address
-  unblock [IP] - Unblock IP address
-  reports - Show recent threat reports
-  exit - Exit interactive mode
-```
-
-### API Usage
-
-The agent can be integrated into other Python applications:
-
-```python
-from agent.core import DefenseAgent
-from agent.config import init_config, get_agent_config
-
-# Initialize configuration
-config_manager = init_config("config/custom_config.yaml")
-config = get_agent_config()
-
-# Create agent instance
-agent = DefenseAgent(config=config, simulation_mode=True)
-
-# Start the agent
-agent.start()
-
-# Perform manual scan
-threats = agent.scan()
-print(f"Detected {len(threats)} potential threats")
-
-# Clean shutdown
-agent.shutdown()
+nano config/ml_models.json
 ```
 
 ## 📡 API Reference
 
-Lesh provides a REST API for integration with other tools and systems.
+The agent provides a REST API for integration with other tools.
 
 ### Starting the API Server
 
 ```bash
-python -m src.api.server
+python run.py --api
 ```
-
-By default, the API server runs on `http://localhost:8000`.
 
 ### API Endpoints
 
@@ -367,166 +233,22 @@ By default, the API server runs on `http://localhost:8000`.
 | `/detect` | POST | Submit traffic data for anomaly detection |
 | `/explain` | POST | Get explanations for detected anomalies |
 | `/status` | GET | Get agent status information |
-| `/metrics` | GET | Get performance metrics |
 
-### Example API Request
+## 🧪 Testing
 
-```bash
-curl -X POST \
-  http://localhost:8000/detect \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "host_features": {"ip": "192.168.1.5", "port": 443},
-    "flow_features": {"bytes": 1528, "packets": 4},
-    "packet_features": {"tcp_flags": 16, "protocol": 6}
-  }'
-```
-
-## 🧠 Machine Learning Components
-
-Lesh uses multiple machine learning techniques for anomaly detection:
-
-### Available Models
-
-1. **Autoencoder Neural Networks**
-   - Reconstructs normal traffic and identifies anomalies by reconstruction error
-   - Effective for complex patterns and high-dimensional data
-
-2. **Isolation Forest**
-   - Fast anomaly detection based on decision tree isolation
-   - Requires minimal preprocessing and works well with medium-sized datasets
-
-3. **Local Outlier Factor (LOF)**
-   - Identifies anomalies based on local density deviations
-   - Effective for clustered data with varying densities
-
-4. **DBSCAN**
-   - Density-based spatial clustering for anomaly detection
-   - Separates normal behavior from outliers
-
-5. **One-Class SVM**
-   - Support Vector Machine for novelty detection
-   - Creates a boundary around normal data
-
-### Training the Models
-
-To train the machine learning models:
-
-```bash
-python train.py
-```
-
-This will:
-1. Create a simulated network environment
-2. Generate training data with normal and anomalous traffic
-3. Train each model type on this data
-4. Save the trained models to the `models/` directory
-
-### Customizing Model Parameters
-
-Advanced users can adjust model parameters in `config/ml_config.yaml`:
-
-```yaml
-anomaly_detection:
-  methods:
-    - autoencoder
-    - isolation_forest
-    - lof
-  autoencoder:
-    encoding_dims: [64, 32, 16]
-    learning_rate: 0.001
-    epochs: 50
-  isolation_forest:
-    n_estimators: 100
-    contamination: 0.1
-```
-
-## 🛠️ Development
-
-### Project Structure
-
-```
-lesh/
-├── agent/                  # Core agent functionality
-│   ├── core/               # Core agent components
-│   ├── modules/            # Functional modules
-│   └── utils/              # Utility functions and classes
-├── src/                    # Source code for models and environments
-│   ├── models/             # ML and detection models
-│   ├── environments/       # Simulation environments
-│   ├── api/                # API server implementation
-│   └── utils/              # Additional utilities
-├── config/                 # Configuration files
-│   ├── profiles/           # Environment-specific configs
-│   └── example_config.yaml # Example configuration
-├── logs/                   # Log files
-├── models/                 # Saved ML models
-├── data/                   # Data storage
-│   ├── analytics/          # Analytics results
-│   └── visualizations/     # Generated visualizations
-├── tests/                  # Test suite
-├── docs/                   # Documentation
-│   ├── images/             # Documentation images including logo
-└── README.md               # This file
-```
-
-### Development Environment Setup
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows
-venv\Scripts\activate
-# On Unix/MacOS
-source venv/bin/activate
-
-# Install dependencies including development packages
-pip install -r requirements-dev.txt
-```
-
-### Running Tests
+Run the test suite to ensure everything is working:
 
 ```bash
 pytest tests/
 ```
 
-For coverage report:
-```bash
-pytest --cov=agent --cov=src tests/
-```
-
-### Code Style
-
-This project follows the PEP 8 style guide and uses Black for formatting:
+For specific test files:
 
 ```bash
-black agent/ src/ tests/
+pytest tests/test_anomaly_detector.py
+pytest tests/test_email_notifications.py
+pytest tests/test_dashboard.py
 ```
-
-### Building Documentation
-
-```bash
-cd docs
-sphinx-build -b html . _build/html
-```
-
-## 👥 Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
-
-### Development Process
-
-1. Fork the repository
-2. Create a feature branch
-3. Add your changes
-4. Run tests
-5. Submit a pull request
-
-### Feature Requests and Bug Reports
-
-Please use the GitHub issue tracker to submit feature requests and report bugs.
 
 ## 📄 License
 
@@ -537,35 +259,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Common Issues
 
 1. **Import errors**: Make sure all dependencies are installed with `pip install -r requirements.txt`
-
 2. **Permission issues**: Some detection and response capabilities require administrative privileges
-
-3. **Configuration errors**: Check for syntax errors in your YAML configuration
-
-4. **Model loading errors**: Ensure models are trained before trying to load them
-
-### Logging
-
-For detailed logs, increase the log level:
-
-```yaml
-# In config.yaml
-logging:
-  level: "DEBUG"
-```
-
-Or use the command line:
-```bash
-python run_agent.py --verbose
-```
+3. **Dashboard not loading**: Check if the correct port (8050) is available
+4. **ML models not working**: Ensure models are trained before trying to use them
 
 ### Getting Help
 
-- Check the [documentation](docs/)
-- Open an issue on GitHub
-- Contact the maintainers
+If you encounter any problems, please open an issue on the GitHub repository.
 
 ---
-
-© 2023 Lesh: Autonomous Cybersecurity Defense Agent
 

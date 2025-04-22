@@ -1,0 +1,21 @@
+{
+  "password_policy": {
+    "min_length": 8,
+    "require_complexity": true
+  },
+  "services": {
+    "disabled": [
+      "telnet",
+      "ftp"
+    ],
+    "required": [
+      "firewall",
+      "antivirus"
+    ]
+  },
+  "configurations": {
+    "auto_updates": true,
+    "firewall_enabled": true,
+    "guest_account_disabled": true
+  }
+}

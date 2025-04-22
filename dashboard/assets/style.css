@@ -1,0 +1,274 @@
+/* Dashboard styles for the Autonomous Cybersecurity Agent */
+
+/* General layout and theme - Enterprise Edition */
+:root {
+    --primary-color: #0078d4;
+    --secondary-color: #50e6ff;
+    --accent-color: #00b7c3;
+    --background-dark: #121212;
+    --background-card: #1d1d1d;
+    --background-lighter: #2c2c2c;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --success-color: #0ad48b;
+    --warning-color: #ffaa44;
+    --danger-color: #f25022;
+    --grid-color: rgba(255, 255, 255, 0.08);
+    --border-radius: 6px;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body {
+    background-color: var(--background-dark);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.dashboard-container {
+    padding: 20px;
+    background-color: var(--background-dark);
+    min-height: 100vh;
+    position: relative;
+}
+
+.dashboard-container:before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(rgba(18, 18, 18, 0.97), rgba(18, 18, 18, 0.97)),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px) 50% 50% / 20px 20px,
+        linear-gradient(var(--grid-color) 1px, transparent 1px) 50% 50% / 20px 20px;
+    z-index: -1;
+}
+
+.dashboard-title {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 24px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.header {
+    border-bottom: 1px solid var(--grid-color);
+    margin-bottom: 20px !important;
+    position: relative;
+    padding-bottom: 10px;
+}
+
+.header:after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+/* Cards and status indicators */
+.status-card {
+    border: none;
+    border-radius: var(--border-radius);
+    background-color: var(--background-card);
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.status-card:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.card-title {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.threat-counter, .events-counter {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 10px 0;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.health-indicator {
+    font-size: 1.8rem;
+    font-weight: 700;
+    padding: 5px 0;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.health-indicator.healthy {
+    color: var(--success-color);
+}
+
+.health-indicator.warning {
+    color: var(--warning-color);
+}
+
+.health-indicator.critical {
+    color: var(--danger-color);
+}
+
+/* Tabs and content areas */
+.nav-tabs {
+    border-bottom: 1px solid var(--grid-color);
+}
+
+.nav-tabs .nav-link {
+    color: var(--text-secondary);
+    border: none;
+    padding: 10px 20px;
+    transition: all 0.2s ease;
+    position: relative;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--secondary-color);
+    background-color: transparent;
+    border-bottom: none;
+}
+
+.nav-tabs .nav-link.active:after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+    color: var(--text-primary);
+    border-bottom: none;
+}
+
+.tab-content {
+    padding: 20px 0;
+}
+
+/* Charts and graphs styling */
+.js-plotly-plot .plotly {
+    background-color: var(--background-card) !important;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.js-plotly-plot .plotly .main-svg {
+    background-color: var(--background-card) !important;
+}
+
+/* Log entries styles */
+.log-container {
+    height: 500px;
+    overflow-y: auto;
+    background-color: var(--background-card);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    border: 1px solid var(--grid-color);
+    box-shadow: var(--box-shadow);
+}
+
+.log-entry {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--grid-color);
+    font-size: 0.9rem;
+}
+
+.log-timestamp {
+    color: #888;
+    margin-right: 10px;
+    display: inline-block;
+    width: 80px;
+}
+
+.log-severity {
+    margin-right: 10px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    width: 70px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.log-severity.log-critical {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.log-severity.log-high {
+    background-color: #ff9500;
+    color: white;
+}
+
+.log-severity.log-medium {
+    background-color: var(--warning-color);
+    color: black;
+}
+
+.log-severity.log-low {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.log-severity.log-info {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.log-message {
+    color: var(--text-primary);
+}
+
+.new-entry {
+    background-color: rgba(0, 120, 212, 0.15);
+    animation: fadeEffect 2s;
+}
+
+@keyframes fadeEffect {
+    from {background-color: rgba(0, 120, 212, 0.3);}
+    to {background-color: transparent;}
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-title {
+        font-size: 1.5rem;
+    }
+    
+    .threat-counter, .events-counter, .health-indicator {
+        font-size: 1.8rem;
+    }
+}

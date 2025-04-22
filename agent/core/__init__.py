@@ -1,3 +1,7 @@
-from agent.core.agent import DefenseAgent
+"""
+Core components of the Autonomous Cybersecurity Defense Agent.
+"""
 
-__all__ = ["DefenseAgent"]
+from agent.core.defense_agent import DefenseAgent
+
+__all__ = ['DefenseAgent']

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Depends, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
@@ -10,6 +10,7 @@ import os
 import json
 from datetime import datetime
 import logging
+import time
 
 # Import your project modules
 from src.models.anomaly_detector import AnomalyDetector
@@ -103,6 +104,15 @@ def get_components():
             raise HTTPException(status_code=500, detail=f"Failed to initialize components: {e}")
     
     return api_state
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Handle all other exceptions."""
+    logger.error(f"Unhandled exception: {exc}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An unexpected error occurred."}
+    )
 
 # Routes
 @app.get("/", tags=["General"])
@@ -231,6 +241,32 @@ async def explain_detection(data: NetworkTrafficData, components=Depends(get_com
     except Exception as e:
         logger.error(f"Explanation error: {e}")
         raise HTTPException(status_code=500, detail=f"Explanation failed: {str(e)}")
+
+@app.get("/metrics", tags=["Metrics"])
+async def get_metrics(components=Depends(get_components)):
+    """Get performance metrics."""
+    try:
+        uptime = (datetime.now() - components["start_time"]).total_seconds()
+        return {
+            "timestamp": time.time(),
+            "system": {
+                "uptime": uptime,
+                "cpu_usage": 15.2,  # Simulated value
+                "memory_usage": 128.4  # Simulated value
+            },
+            "detection": {
+                "scans_performed": len(components["recent_detections"]) * 5,  # Simulated value
+                "threats_detected": len([d for d in components["recent_detections"] if d.get("is_anomaly", False)]),
+                "avg_detection_time": 0.24  # Simulated value
+            },
+            "response": {
+                "actions_taken": len(components["recent_detections"]) // 2,  # Simulated value
+                "response_time_avg": 0.18  # Simulated value
+            }
+        }
+    except Exception as e:
+        logger.error(f"Metrics error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve metrics: {str(e)}")
 
 # Run the application
 def start_api(host="0.0.0.0", port=8000, reload=False):
