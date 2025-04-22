@@ -1,0 +1,79 @@
+# Autonomous Cybersecurity Defense Agent - Configuration
+
+# Agent configuration
+agent:
+  # System settings
+  system:
+    name: "Autonomous Cybersecurity Defense Agent"
+    health_check_interval: 120  # seconds
+    health:
+      warning_threshold: 80
+      error_threshold: 95
+  
+  # Detection settings
+  detection:
+    interval: 60  # seconds
+    enabled_modules:
+      - network
+      - system
+      - log_analysis
+    thresholds:
+      network_anomaly: 0.8  # 0.0-1.0
+      system_anomaly: 0.7   # 0.0-1.0
+      log_anomaly: 0.75     # 0.0-1.0
+  
+  # Response settings
+  response:
+    auto_response: true
+    max_severity: 3  # Maximum severity level for auto-response (1-5)
+    cooldown_period: 300  # seconds
+    notification:
+      email: false
+      email_config:
+        smtp_server: "smtp.example.com"
+        smtp_port: 587
+        use_tls: true
+        sender: "security@example.com"
+        username: "security@example.com"
+        password: ""
+      email_recipients:
+        - "admin@example.com"
+      slack: false
+      slack_config:
+        webhook_url: ""
+      webhook: false
+      webhook_config:
+        url: ""
+    safe_ips:
+      - "127.0.0.1"
+      - "192.168.1.1"
+    safe_processes:
+      - "svchost.exe"
+      - "systemd"
+      - "init"
+      - "lsass.exe"
+  
+  # Analytics settings
+  analytics:
+    interval: 300  # seconds
+    retention_days: 30
+    data_dir: "data/analytics"
+    ml_enabled: false
+    max_history_size: 10000
+
+# Logging settings
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/agent.log"
+  max_size: 10  # MB
+  backup_count: 5
+  
+# API settings
+api:
+  enabled: false
+  host: "localhost"
+  port: 8000
+  cors_origins:
+    - "http://localhost"
+    - "http://localhost:3000"
+  require_auth: false

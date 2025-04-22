@@ -1,5 +1,5 @@
 """
-Response orchestration module for the Autonomous Cybersecurity Defense Agent.
+Response orchestration module for the Lesh Autonomous Cybersecurity Defense Agent.
 """
 
 import logging
@@ -10,556 +10,779 @@ import os
 import json
 import smtplib
 import requests
+import psutil
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, List, Any, Optional
+import ipaddress
 
-from ..utils.logger import log_security_event
-from .threat_detection import Threat
+from agent.utils.logger import log_security_event
+from agent.utils.config import Config
 
 class ResponseAction:
     """Base class for response actions."""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], simulation_mode: bool = False):
         """
         Initialize the response action.
         
         Args:
-            config: Configuration dictionary for the response action
+            config: Response configuration
+            simulation_mode: If True, don't make actual changes
         """
         self.logger = logging.getLogger(__name__)
         self.config = config
+        self.simulation_mode = simulation_mode
         
-    def execute(self, threat: Threat) -> bool:
+    def execute(self, threat: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execute the response action for the given threat.
+        Execute the response action for a given threat.
         
         Args:
-            threat: The threat to respond to
+            threat: Threat to respond to
             
         Returns:
-            True if the action was successful, False otherwise
+            Dictionary with response results
         """
-        raise NotImplementedError("Response actions must implement execute method")
+        raise NotImplementedError("Subclasses must implement execute()")
         
-    def _log_action(self, threat: Threat, action: str, success: bool, details: str = None) -> None:
+    def _log_action(self, action: str, target: str, success: bool, details: Dict[str, Any] = None):
         """
-        Log the response action.
+        Log a response action.
         
         Args:
-            threat: The threat being responded to
-            action: The action taken
+            action: Action taken
+            target: Target of the action
             success: Whether the action was successful
             details: Additional details about the action
         """
-        result = "successful" if success else "failed"
-        msg = f"Response action {action} {result} for {threat.type} threat {threat.id}"
+        status = "SUCCESS" if success else "FAILURE"
+        msg = f"Response action {action} against {target}: {status}"
+        level = logging.INFO if success else logging.WARNING
         
-        if details:
-            msg += f": {details}"
-            
-        log_level = logging.INFO if success else logging.ERROR
-        log_security_event(msg, level=log_level,
-                          threat_id=threat.id, 
-                          threat_type=threat.type, 
-                          action=action,
-                          success=success)
+        self.logger.log(level, msg)
+        log_security_event(msg, level, action=action, target=target, success=success, details=details)
 
 class NetworkBlockAction(ResponseAction):
     """Block network connections related to a threat."""
     
-    def execute(self, threat: Threat) -> bool:
+    def execute(self, threat: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Block network connections related to a threat.
+        Execute network blocking response.
         
         Args:
-            threat: The threat to respond to
+            threat: Threat to respond to
             
         Returns:
-            True if the action was successful, False otherwise
+            Dictionary with response results
         """
-        if threat.type != "suspicious_connection":
-            self.logger.warning(f"NetworkBlockAction not applicable for threat type {threat.type}")
+        result = {
+            "action": "network_block",
+            "success": False,
+            "details": {}
+        }
+        
+        try:
+            # Get the IP to block
+            if threat["type"] == "suspicious_connection":
+                ip = threat["details"]["remote_address"].split(":")[0]
+            elif "source" in threat and self._is_valid_ip(threat["source"]):
+                ip = threat["source"]
+            else:
+                self.logger.warning(f"No valid IP found in threat: {threat['id']}")
+                result["details"]["error"] = "No valid IP address found in threat"
+                return result
+                
+            # Check if this is a valid IP to block
+            if not self._is_valid_ip(ip) or self._is_safe_ip(ip):
+                self.logger.warning(f"IP {ip} is not valid or is in safe list")
+                result["details"]["error"] = f"IP {ip} is not valid or is in safe list"
+                return result
+                
+            # Execute the block
+            if self.simulation_mode:
+                self.logger.info(f"SIMULATION: Would block IP: {ip}")
+                result["success"] = True
+                result["details"]["ip"] = ip
+                result["details"]["simulated"] = True
+                self._log_action("network_block", ip, True, {"simulated": True})
+            else:
+                # Perform actual blocking based on OS
+                if platform.system() == "Linux":
+                    success = self._block_ip_linux(ip)
+                elif platform.system() == "Windows":
+                    success = self._block_ip_windows(ip)
+                else:
+                    self.logger.error(f"Unsupported OS: {platform.system()}")
+                    result["details"]["error"] = f"Unsupported OS: {platform.system()}"
+                    return result
+                    
+                result["success"] = success
+                result["details"]["ip"] = ip
+                self._log_action("network_block", ip, success)
+                
+        except Exception as e:
+            self.logger.error(f"Error in network block action: {e}", exc_info=True)
+            result["details"]["error"] = str(e)
+            
+        return result
+        
+    def _is_valid_ip(self, ip: str) -> bool:
+        """Check if an IP address is valid."""
+        try:
+            ipaddress.ip_address(ip)
+            return True
+        except ValueError:
             return False
             
+    def _is_safe_ip(self, ip: str) -> bool:
+        """Check if an IP address is in the safe list."""
+        # List of IPs that should never be blocked
+        safe_ips = self.config.get("safe_ips", [
+            "127.0.0.1",      # Localhost
+            "192.168.1.1",    # Default gateway (example)
+        ])
+        
+        # Check if it's a local network address
         try:
-            # Extract remote address from threat details
-            if 'remote_address' not in threat.details:
-                self.logger.error(f"Missing remote_address in threat details: {threat.details}")
-                return False
-                
-            remote = threat.details['remote_address']
-            ip = remote.split(':')[0]
+            ip_obj = ipaddress.ip_address(ip)
             
-            # In simulation mode, just log the action
-            if self.config.get('simulation_mode', False):
-                self.logger.info(f"SIMULATION: Would block IP {ip} due to threat {threat.id}")
-                self._log_action(threat, "network_block", True, f"Simulated blocking {ip}")
+            # Never block localhost
+            if ip_obj.is_loopback:
                 return True
-            
-            # Implement actual blocking logic based on the OS
-            os_name = platform.system().lower()
-            success = False
-            
-            if os_name == 'windows':
-                # Use Windows Firewall to block the IP
-                cmd = f'netsh advfirewall firewall add rule name="Block {ip} - Security Agent" dir=in action=block remoteip={ip}'
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                success = result.returncode == 0
-                details = result.stdout if success else result.stderr
                 
-            elif os_name in ('linux', 'darwin'):  # Linux or macOS
-                # Use iptables (Linux) or pf (macOS) to block the IP
-                if os_name == 'linux':
-                    cmd = f'sudo iptables -A INPUT -s {ip} -j DROP'
-                else:  # macOS
-                    cmd = f'echo "block in from {ip} to any" | sudo pfctl -ef -'
-                    
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                success = result.returncode == 0
-                details = result.stdout if success else result.stderr
+            # Check safe list
+            if ip in safe_ips:
+                return True
+                
+        except ValueError:
+            pass
             
-            else:
-                self.logger.warning(f"Network blocking not implemented for OS: {os_name}")
+        return False
+        
+    def _block_ip_linux(self, ip: str) -> bool:
+        """
+        Block an IP address on Linux using iptables.
+        
+        Args:
+            ip: IP address to block
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            cmd = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            # Check result
+            if result.returncode != 0:
+                self.logger.error(f"Failed to block IP {ip}: {result.stderr}")
                 return False
                 
-            # Log the action
-            self._log_action(threat, "network_block", success, 
-                            f"{'Successfully blocked' if success else 'Failed to block'} {ip}")
-                
-            return success
+            self.logger.info(f"Successfully blocked IP: {ip}")
+            return True
             
-        except Exception as e:
-            self.logger.error(f"Error executing network block action: {e}", exc_info=True)
-            self._log_action(threat, "network_block", False, f"Error: {str(e)}")
+        except subprocess.SubprocessError as e:
+            self.logger.error(f"Error blocking IP {ip}: {e}")
+            return False
+            
+    def _block_ip_windows(self, ip: str) -> bool:
+        """
+        Block an IP address on Windows using Windows Firewall.
+        
+        Args:
+            ip: IP address to block
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        rule_name = f"BlockIP_{ip.replace('.', '_')}"
+        
+        try:
+            # Create a new Windows Firewall rule to block the IP
+            cmd = [
+                "netsh", "advfirewall", "firewall", "add", "rule",
+                f"name={rule_name}",
+                "dir=in",
+                "action=block",
+                f"remoteip={ip}"
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            # Check result
+            if result.returncode != 0:
+                self.logger.error(f"Failed to block IP {ip}: {result.stderr}")
+                return False
+                
+            self.logger.info(f"Successfully blocked IP: {ip}")
+            return True
+            
+        except subprocess.SubprocessError as e:
+            self.logger.error(f"Error blocking IP {ip}: {e}")
             return False
 
 class ProcessTerminateAction(ResponseAction):
     """Terminate a suspicious process."""
     
-    def execute(self, threat: Threat) -> bool:
+    def execute(self, threat: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Terminate a suspicious process.
+        Execute process termination response.
         
         Args:
-            threat: The threat to respond to
+            threat: Threat to respond to
             
         Returns:
-            True if the action was successful, False otherwise
+            Dictionary with response results
         """
-        if threat.type != "suspicious_process":
-            self.logger.warning(f"ProcessTerminateAction not applicable for threat type {threat.type}")
+        result = {
+            "action": "process_terminate",
+            "success": False,
+            "details": {}
+        }
+        
+        try:
+            # Get the process ID to terminate
+            if threat["type"] == "suspicious_process" and "pid" in threat["details"]:
+                pid = threat["details"]["pid"]
+            elif threat["source"] and threat["source"].startswith("PID:"):
+                pid = int(threat["source"].split(":")[1])
+            else:
+                self.logger.warning(f"No valid PID found in threat: {threat['id']}")
+                result["details"]["error"] = "No valid PID found in threat"
+                return result
+                
+            # Check if this is a valid PID
+            if not self._is_valid_pid(pid) or self._is_safe_process(pid):
+                self.logger.warning(f"PID {pid} is not valid or is in safe list")
+                result["details"]["error"] = f"PID {pid} is not valid or is in safe list"
+                return result
+                
+            # Execute the termination
+            if self.simulation_mode:
+                self.logger.info(f"SIMULATION: Would terminate process: {pid}")
+                result["success"] = True
+                result["details"]["pid"] = pid
+                result["details"]["simulated"] = True
+                self._log_action("process_terminate", f"PID:{pid}", True, {"simulated": True})
+            else:
+                # Get process name for logging before termination
+                process_name = "Unknown"
+                try:
+                    process = psutil.Process(pid)
+                    process_name = process.name()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+                    
+                # Terminate the process
+                success = self._terminate_process(pid)
+                    
+                result["success"] = success
+                result["details"]["pid"] = pid
+                result["details"]["process_name"] = process_name
+                self._log_action("process_terminate", f"{process_name} (PID:{pid})", success)
+                
+        except Exception as e:
+            self.logger.error(f"Error in process terminate action: {e}", exc_info=True)
+            result["details"]["error"] = str(e)
+            
+        return result
+        
+    def _is_valid_pid(self, pid: int) -> bool:
+        """Check if a process ID is valid."""
+        try:
+            return psutil.pid_exists(pid)
+        except:
             return False
             
+    def _is_safe_process(self, pid: int) -> bool:
+        """Check if a process should not be terminated."""
         try:
-            # Extract PID from threat details
-            if 'pid' not in threat.details:
-                self.logger.error(f"Missing pid in threat details: {threat.details}")
+            process = psutil.Process(pid)
+            
+            # Never terminate system critical processes
+            if process.username() in ["root", "SYSTEM", "NT AUTHORITY\\SYSTEM"]:
+                # Check if it's in the allowed list for termination
+                safe_processes = self.config.get("safe_processes", [
+                    "svchost.exe",
+                    "systemd",
+                    "init",
+                    "lsass.exe"
+                ])
+                
+                if process.name() in safe_processes:
+                    return True
+            
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+            
+        return False
+        
+    def _terminate_process(self, pid: int) -> bool:
+        """
+        Terminate a process.
+        
+        Args:
+            pid: Process ID to terminate
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            process = psutil.Process(pid)
+            process.terminate()
+            
+            # Wait up to 3 seconds for process to terminate
+            gone, still_alive = psutil.wait_procs([process], timeout=3)
+            
+            if still_alive:
+                # Process didn't terminate, try to kill it
+                process.kill()
+                gone, still_alive = psutil.wait_procs([process], timeout=2)
+                
+            if still_alive:
+                self.logger.error(f"Failed to terminate process {pid}")
                 return False
                 
-            pid = threat.details['pid']
+            self.logger.info(f"Successfully terminated process: {pid}")
+            return True
             
-            # In simulation mode, just log the action
-            if self.config.get('simulation_mode', False):
-                self.logger.info(f"SIMULATION: Would terminate process {pid} due to threat {threat.id}")
-                self._log_action(threat, "process_terminate", True, f"Simulated terminating PID {pid}")
-                return True
-            
-            # Implement actual process termination
-            import psutil
-            
-            try:
-                process = psutil.Process(pid)
-                process_name = process.name()
-                process.terminate()
-                
-                # Wait for process to terminate
-                try:
-                    process.wait(timeout=5)
-                    success = True
-                    details = f"Successfully terminated {process_name} (PID: {pid})"
-                except psutil.TimeoutExpired:
-                    # If terminate fails, try kill
-                    process.kill()
-                    process.wait(timeout=5)
-                    success = True
-                    details = f"Forcefully killed {process_name} (PID: {pid}) after terminate failed"
-                    
-            except psutil.NoSuchProcess:
-                success = False
-                details = f"Process {pid} not found"
-            except psutil.AccessDenied:
-                success = False
-                details = f"Access denied when terminating process {pid}"
-                
-            # Log the action
-            self._log_action(threat, "process_terminate", success, details)
-                
-            return success
+        except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+            self.logger.error(f"Error terminating process {pid}: {e}")
+            return False
             
         except Exception as e:
-            self.logger.error(f"Error executing process termination action: {e}", exc_info=True)
-            self._log_action(threat, "process_terminate", False, f"Error: {str(e)}")
+            self.logger.error(f"Unexpected error terminating process {pid}: {e}")
             return False
 
 class NotificationAction(ResponseAction):
     """Send notifications about detected threats."""
     
-    def execute(self, threat: Threat) -> bool:
+    def execute(self, threat: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Send notifications about the detected threat.
+        Send notifications about a threat.
         
         Args:
-            threat: The threat to notify about
+            threat: Threat to notify about
             
         Returns:
-            True if the notification was sent successfully, False otherwise
+            Dictionary with notification results
         """
+        result = {
+            "action": "notification",
+            "success": False,
+            "methods": {},
+            "details": {}
+        }
+        
         try:
-            notification_config = self.config.get('notification', {})
+            # Format the threat information for notification
+            threat_info = self._format_threat_info(threat)
+            result["details"]["threat_info"] = threat_info
             
-            # Format the notification message
-            subject = f"Security Alert: {threat.type} detected"
+            # Decide which notification methods to use based on severity
+            notification_config = self.config.get("notification", {})
+            methods = []
             
-            message = f"""
-Security Alert: {threat.type} detected
-
-Severity: {threat.severity}/5
-Confidence: {threat.confidence:.2f}
-Source: {threat.source}
-Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(threat.timestamp))}
+            if threat["severity"] >= 4:  # High severity
+                if notification_config.get("email", False):
+                    methods.append("email")
+                if notification_config.get("slack", False):
+                    methods.append("slack")
+                if notification_config.get("webhook", False):
+                    methods.append("webhook")
+                    
+            elif threat["severity"] >= 2:  # Medium severity
+                if notification_config.get("email", False):
+                    methods.append("email")
+                    
+            # Low severity threats might not need immediate notification
+            
+            # Send notifications by each method
+            success = False
+            for method in methods:
+                method_result = False
+                
+                if method == "email":
+                    method_result = self._send_email_notification(threat_info)
+                elif method == "slack":
+                    method_result = self._send_slack_notification(threat_info)
+                elif method == "webhook":
+                    method_result = self._send_webhook_notification(threat_info)
+                    
+                result["methods"][method] = method_result
+                
+                # If any method succeeds, consider the notification successful
+                if method_result:
+                    success = True
+                    
+            result["success"] = success
+            
+            if success:
+                self._log_action("notification", 
+                            f"{', '.join(methods)} for {threat['type']}", 
+                            True, 
+                            {"methods": methods})
+            else:
+                self._log_action("notification", 
+                            f"all methods for {threat['type']}", 
+                            False,
+                            {"methods": methods})
+                            
+        except Exception as e:
+            self.logger.error(f"Error in notification action: {e}", exc_info=True)
+            result["details"]["error"] = str(e)
+            
+        return result
+        
+    def _format_threat_info(self, threat: Dict[str, Any]) -> str:
+        """Format threat information for notifications."""
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(threat["timestamp"]))
+        
+        info = f"""
+LESH SECURITY ALERT: {threat['type'].upper()}
+Timestamp: {timestamp}
+Source: {threat['source']}
+Severity: {threat['severity']}/5
+Confidence: {threat['confidence']:.2f}
 
 Details:
-{json.dumps(threat.details, indent=2)}
-            """
-            
-            # Track notification success
-            success = True
-            details = []
-            
-            # Send email notification if configured
-            if notification_config.get('email', False):
-                email_success, email_details = self._send_email(subject, message)
-                success = success and email_success
-                if not email_success:
-                    details.append(f"Email: {email_details}")
-                    
-            # Send Slack notification if configured
-            if notification_config.get('slack', False):
-                slack_success, slack_details = self._send_slack(subject, message)
-                success = success and slack_success
-                if not slack_success:
-                    details.append(f"Slack: {slack_details}")
-                    
-            # Send webhook notification if configured
-            if notification_config.get('webhook', False):
-                webhook_success, webhook_details = self._send_webhook(subject, threat)
-                success = success and webhook_success
-                if not webhook_success:
-                    details.append(f"Webhook: {webhook_details}")
-                    
-            # Log the action
-            detail_str = "; ".join(details) if details else "All notifications sent successfully"
-            self._log_action(threat, "notification", success, detail_str)
+"""
+        
+        # Add threat details
+        for key, value in threat["details"].items():
+            if key != "anomaly_reasons":
+                info += f"- {key}: {value}\n"
                 
-            return success
+        # Add anomaly reasons if present
+        if "anomaly_reasons" in threat["details"]:
+            info += "\nReasons for detection:\n"
+            for reason in threat["details"]["anomaly_reasons"]:
+                info += f"- {reason}\n"
+                
+        info += f"\nThreat ID: {threat['id']}"
+        
+        return info
+        
+    def _send_email_notification(self, threat_info: str) -> bool:
+        """
+        Send email notification.
+        
+        Args:
+            threat_info: Formatted threat information
             
-        except Exception as e:
-            self.logger.error(f"Error sending notification: {e}", exc_info=True)
-            self._log_action(threat, "notification", False, f"Error: {str(e)}")
+        Returns:
+            True if successful, False otherwise
+        """
+        if self.simulation_mode:
+            self.logger.info(f"SIMULATION: Would send email notification:\n{threat_info}")
+            return True
+            
+        email_config = self.config.get("notification", {}).get("email_config", {})
+        recipients = self.config.get("notification", {}).get("email_recipients", [])
+        
+        if not recipients:
+            self.logger.error("No email recipients configured")
             return False
             
-    def _send_email(self, subject: str, message: str) -> tuple[bool, str]:
-        """
-        Send an email notification.
-        
-        Args:
-            subject: Email subject
-            message: Email message body
-            
-        Returns:
-            Tuple of (success, details)
-        """
         try:
-            email_config = self.config.get('notification', {}).get('email_config', {})
-            
-            # Check if email is properly configured
-            required_configs = ['smtp_server', 'smtp_port', 'sender', 'recipients']
-            for config in required_configs:
-                if config not in email_config:
-                    return False, f"Missing email config: {config}"
-            
-            # In simulation mode, just log the action
-            if self.config.get('simulation_mode', False):
-                self.logger.info(f"SIMULATION: Would send email with subject '{subject}'")
-                return True, "Simulated email sending"
-                
             # Create message
             msg = MIMEMultipart()
-            msg['From'] = email_config['sender']
-            msg['To'] = ", ".join(email_config['recipients'])
-            msg['Subject'] = subject
+            msg['From'] = email_config.get("sender", "lesh-security@example.com")
+            msg['To'] = ", ".join(recipients)
+            msg['Subject'] = "LESH SECURITY ALERT - Cybersecurity Threat Detected"
             
-            msg.attach(MIMEText(message, 'plain'))
+            msg.attach(MIMEText(threat_info, 'plain'))
             
-            # Send email
-            with smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port']) as server:
-                if email_config.get('use_tls', False):
+            # Connect to SMTP server
+            with smtplib.SMTP(email_config.get("smtp_server", "localhost"), 
+                             email_config.get("smtp_port", 25)) as server:
+                
+                # Use TLS if configured
+                if email_config.get("use_tls", False):
                     server.starttls()
                     
-                if 'username' in email_config and 'password' in email_config:
-                    server.login(email_config['username'], email_config['password'])
+                # Login if credentials provided
+                if email_config.get("username") and email_config.get("password"):
+                    server.login(email_config["username"], email_config["password"])
                     
+                # Send email
                 server.send_message(msg)
                 
-            return True, "Email sent successfully"
+            self.logger.info(f"Sent email notification to {len(recipients)} recipients")
+            return True
             
         except Exception as e:
-            self.logger.error(f"Error sending email: {e}", exc_info=True)
-            return False, str(e)
+            self.logger.error(f"Error sending email notification: {e}")
+            return False
             
-    def _send_slack(self, subject: str, message: str) -> tuple[bool, str]:
+    def _send_slack_notification(self, threat_info: str) -> bool:
         """
-        Send a Slack notification.
+        Send Slack notification.
         
         Args:
-            subject: Message subject/title
-            message: Message body
+            threat_info: Formatted threat information
             
         Returns:
-            Tuple of (success, details)
+            True if successful, False otherwise
         """
+        if self.simulation_mode:
+            self.logger.info(f"SIMULATION: Would send Slack notification:\n{threat_info}")
+            return True
+            
+        slack_config = self.config.get("notification", {}).get("slack_config", {})
+        webhook_url = slack_config.get("webhook_url")
+        
+        if not webhook_url:
+            self.logger.error("No Slack webhook URL configured")
+            return False
+            
         try:
-            slack_config = self.config.get('notification', {}).get('slack_config', {})
-            
-            # Check if Slack is properly configured
-            if 'webhook_url' not in slack_config:
-                return False, "Missing Slack webhook URL"
-            
-            # In simulation mode, just log the action
-            if self.config.get('simulation_mode', False):
-                self.logger.info(f"SIMULATION: Would send Slack message with subject '{subject}'")
-                return True, "Simulated Slack message sending"
-                
-            # Format Slack message
+            # Create payload
             payload = {
-                "text": subject,
+                "text": "🚨 *LESH SECURITY ALERT* 🚨",
                 "blocks": [
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"*{subject}*"
+                            "text": "🚨 *LESH SECURITY ALERT* 🚨"
                         }
                     },
                     {
                         "type": "section",
                         "text": {
-                            "type": "mrkdwn",
-                            "text": message
+                            "type": "plain_text",
+                            "text": threat_info
                         }
                     }
                 ]
             }
             
             # Send to Slack
-            response = requests.post(
-                slack_config['webhook_url'],
-                json=payload,
-                headers={'Content-Type': 'application/json'}
-            )
+            response = requests.post(webhook_url, json=payload)
             
-            success = response.status_code == 200
-            details = "Slack message sent successfully" if success else f"Error: {response.text}"
-            
-            return success, details
-            
+            if response.status_code == 200:
+                self.logger.info("Sent Slack notification successfully")
+                return True
+            else:
+                self.logger.error(f"Error sending Slack notification: {response.status_code}")
+                return False
+                
         except Exception as e:
-            self.logger.error(f"Error sending Slack message: {e}", exc_info=True)
-            return False, str(e)
+            self.logger.error(f"Error sending Slack notification: {e}")
+            return False
             
-    def _send_webhook(self, subject: str, threat: Threat) -> tuple[bool, str]:
+    def _send_webhook_notification(self, threat_info: str) -> bool:
         """
-        Send a webhook notification.
+        Send notification to a custom webhook.
         
         Args:
-            subject: Message subject/title
-            threat: The threat object
+            threat_info: Formatted threat information
             
         Returns:
-            Tuple of (success, details)
+            True if successful, False otherwise
         """
+        if self.simulation_mode:
+            self.logger.info(f"SIMULATION: Would send webhook notification")
+            return True
+            
+        webhook_config = self.config.get("notification", {}).get("webhook_config", {})
+        webhook_url = webhook_config.get("url")
+        
+        if not webhook_url:
+            self.logger.error("No webhook URL configured")
+            return False
+            
         try:
-            webhook_config = self.config.get('notification', {}).get('webhook_config', {})
-            
-            # Check if webhook is properly configured
-            if 'url' not in webhook_config:
-                return False, "Missing webhook URL"
-            
-            # In simulation mode, just log the action
-            if self.config.get('simulation_mode', False):
-                self.logger.info(f"SIMULATION: Would send webhook with subject '{subject}'")
-                return True, "Simulated webhook sending"
-                
-            # Format webhook payload
+            # Create payload (can be customized based on webhook expectations)
             payload = {
                 "event_type": "security_alert",
-                "title": subject,
-                "threat": {
-                    "id": threat.id,
-                    "type": threat.type,
-                    "source": threat.source,
-                    "severity": threat.severity,
-                    "confidence": threat.confidence,
-                    "timestamp": threat.timestamp,
-                    "details": threat.details
-                }
+                "timestamp": time.time(),
+                "threat_info": threat_info,
+                "source": "lesh_cybersecurity_agent"
             }
             
-            # Add additional webhook fields if specified
-            if 'include_hostname' in webhook_config and webhook_config['include_hostname']:
-                payload["hostname"] = platform.node()
-                
+            # Add custom headers if configured
+            headers = webhook_config.get("headers", {})
+            
             # Send to webhook
-            headers = {'Content-Type': 'application/json'}
+            response = requests.post(webhook_url, json=payload, headers=headers)
             
-            # Add custom headers if specified
-            if 'headers' in webhook_config:
-                headers.update(webhook_config['headers'])
+            if response.status_code == 200:
+                self.logger.info("Sent webhook notification successfully")
+                return True
+            else:
+                self.logger.error(f"Error sending webhook notification: {response.status_code}")
+                return False
                 
-            response = requests.post(
-                webhook_config['url'],
-                json=payload,
-                headers=headers
-            )
-            
-            success = response.status_code == 200
-            details = "Webhook sent successfully" if success else f"Error: {response.status_code}, {response.text}"
-            
-            return success, details
-            
         except Exception as e:
-            self.logger.error(f"Error sending webhook: {e}", exc_info=True)
-            return False, str(e)
+            self.logger.error(f"Error sending webhook notification: {e}")
+            return False
 
-class ResponseOrchestrator:
-    """Orchestrates response actions based on detected threats."""
+class ResponseManager:
+    """
+    Manages and orchestrates response actions to security threats.
+    Decides which responses are appropriate for each threat.
+    """
     
-    def __init__(self, config: Dict[str, Any], simulation_mode: bool = False):
+    def __init__(self, config: Config, simulation_mode: bool = False):
         """
-        Initialize the response orchestrator.
+        Initialize the response manager.
         
         Args:
-            config: Response configuration
-            simulation_mode: If True, actions will be simulated without making changes
+            config: Agent configuration
+            simulation_mode: If True, don't make actual changes
         """
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.config['simulation_mode'] = simulation_mode
+        self.simulation_mode = simulation_mode
         
-        # Initialize response actions
+        # Get response-specific configuration
+        response_config = config.get_section("response")
+        
+        # Create response actions
         self.actions = {
-            "network_block": NetworkBlockAction(self.config),
-            "process_terminate": ProcessTerminateAction(self.config),
-            "notification": NotificationAction(self.config)
+            "network_block": NetworkBlockAction(response_config, simulation_mode),
+            "process_terminate": ProcessTerminateAction(response_config, simulation_mode),
+            "notification": NotificationAction(response_config, simulation_mode)
         }
         
-        # Track metrics
-        self.last_response_time = 0
-        self.response_count = 0
+        # Runtime variables
+        self.last_response_time = None
         self.successful_responses = 0
+        self._running = False
         
-        # Maximum severity level for automatic response (1-5)
-        self.max_auto_severity = config.get('max_severity', 3)
-        self.auto_response = config.get('auto_response', True)
+        # Response rules mapping threats to appropriate actions
+        self.response_rules = {
+            "suspicious_connection": ["network_block", "notification"],
+            "suspicious_process": ["process_terminate", "notification"],
+            "brute_force_attempt": ["network_block", "notification"]
+        }
         
-        if simulation_mode:
-            self.logger.warning("Running in SIMULATION MODE - actions will be logged but not executed")
+        # Cache to prevent repeated responses to the same threat
+        self.response_cache = {}
+        self.cooldown_period = response_config.get("cooldown_period", 300)  # 5 minutes default
+        
+    def start(self):
+        """Start the response manager."""
+        if self._running:
+            return
             
-    def respond_to_threats(self, threats: List[Threat]) -> None:
-        """
-        Respond to detected threats.
+        self.logger.info("Starting response manager")
+        self._running = True
         
-        Args:
-            threats: List of threats to respond to
-        """
-        self.last_response_time = time.time()
-        
-        for threat in threats:
-            self._respond_to_threat(threat)
+        if self.simulation_mode:
+            self.logger.warning("Response manager running in SIMULATION MODE")
             
-        self.logger.info(f"Completed response to {len(threats)} threats")
+        self.logger.info("Response manager started")
+        
+    def stop(self):
+        """Stop the response manager."""
+        if not self._running:
+            return
+            
+        self.logger.info("Stopping response manager")
+        self._running = False
+        
+        self.logger.info("Response manager stopped")
     
-    def _respond_to_threat(self, threat: Threat) -> bool:
+    def handle_threats(self, threats: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Respond to a single threat.
+        Handle a list of detected threats with appropriate responses.
         
         Args:
-            threat: The threat to respond to
+            threats: List of threat dictionaries
             
         Returns:
-            True if the response was successful, False otherwise
+            List of response result dictionaries
         """
-        self.response_count += 1
-        
-        # Log the threat
-        self.logger.warning(
-            f"Responding to {threat.type} threat (ID: {threat.id}, Severity: {threat.severity}/5)"
-        )
-        
-        # Only automatically respond to threats below the configured severity threshold
-        if threat.severity > self.max_auto_severity:
-            self.logger.warning(
-                f"Threat severity {threat.severity} exceeds maximum auto-response threshold "
-                f"of {self.max_auto_severity}"
-            )
-            # Send notification even if we don't take action
-            self.actions["notification"].execute(threat)
-            return False
-        
-        # Only respond if auto-response is enabled
-        if not self.auto_response:
-            self.logger.info("Auto-response is disabled, sending notification only")
-            # Send notification even if auto-response is disabled
-            self.actions["notification"].execute(threat)
-            return False
-        
-        # Determine appropriate responses based on threat type
-        if threat.type == "suspicious_connection":
-            success = self.actions["network_block"].execute(threat)
+        if not self._running:
+            self.logger.warning("Response manager not running, can't handle threats")
+            return []
             
-        elif threat.type == "suspicious_process":
-            success = self.actions["process_terminate"].execute(threat)
-            
-        else:
-            self.logger.warning(f"No defined response actions for threat type: {threat.type}")
-            success = False
+        results = []
         
-        # Always send notification
-        notification_success = self.actions["notification"].execute(threat)
+        for threat in threats:
+            # Skip if we've already responded to this threat recently
+            if self._is_in_cooldown(threat["id"]):
+                self.logger.debug(f"Skipping threat {threat['id']} due to cooldown period")
+                continue
+                
+            # Only auto-respond if severity is below threshold
+            max_severity = self.config.get("response.max_severity", 3)
+            
+            if threat["severity"] > max_severity:
+                self.logger.warning(
+                    f"Threat {threat['id']} severity ({threat['severity']}) exceeds auto-response threshold ({max_severity}), "
+                    "manual intervention required"
+                )
+                # Still send notification
+                if "notification" in self.actions:
+                    result = self.actions["notification"].execute(threat)
+                    results.append(result)
+                continue
+                
+            # Get appropriate response actions for this threat type
+            response_actions = self.response_rules.get(threat["type"], ["notification"])
+            
+            # Execute each action
+            for action_name in response_actions:
+                if action_name in self.actions:
+                    result = self.actions[action_name].execute(threat)
+                    results.append(result)
+                    
+                    # Track successful responses
+                    if result["success"] == True:
+                        self.successful_responses += 1
+            
+            # Update cooldown cache
+            self._add_to_cooldown(threat["id"])
+            
+        # Update last response time
+        if results:
+            self.last_response_time = time.time()
+            
+        return results
+    
+    def _is_in_cooldown(self, threat_id: str) -> bool:
+        """Check if a threat is in the cooldown period."""
+        if threat_id in self.response_cache:
+            last_time = self.response_cache[threat_id]
+            if time.time() - last_time < self.cooldown_period:
+                return True
+        return False
         
-        # Update metrics
-        if success:
-            self.successful_responses += 1
-            
-            # Mark threat as resolved if response was successful
-            threat.resolved = True
-            threat.resolution_time = time.time()
-            threat.resolution_action = "auto_response"
-            
-        return success
+    def _add_to_cooldown(self, threat_id: str):
+        """Add a threat to the cooldown cache."""
+        self.response_cache[threat_id] = time.time()
+        
+        # Clean up old entries
+        self._cleanup_cooldown_cache()
+        
+    def _cleanup_cooldown_cache(self):
+        """Clean up old entries in the cooldown cache."""
+        now = time.time()
+        expired_entries = [
+            threat_id for threat_id, timestamp in self.response_cache.items()
+            if now - timestamp >= self.cooldown_period
+        ]
+        
+        for threat_id in expired_entries:
+            del self.response_cache[threat_id]
             
     def get_status(self) -> Dict[str, Any]:
         """
-        Get the status of the response orchestrator.
+        Get the status of the response manager.
         
         Returns:
-            Dictionary with response orchestrator status information
+            Dictionary with manager status
         """
         return {
-            "last_response_time": self.last_response_time,
-            "total_responses": self.response_count,
+            "running": self._running,
+            "simulation_mode": self.simulation_mode,
+            "last_response_time": self.last_response_time or 0,
             "successful_responses": self.successful_responses,
-            "simulation_mode": self.config.get('simulation_mode', False),
-            "auto_response": self.auto_response
+            "active_responses": len(self.response_cache),
+            "available_actions": list(self.actions.keys())
         }

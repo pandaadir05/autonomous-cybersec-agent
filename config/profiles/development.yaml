@@ -1,0 +1,29 @@
+# Development profile configuration - overrides default settings
+# For development environments with more verbose logging and relaxed security
+
+agent:
+  system:
+    name: "Cybersec Agent (Development)"
+  
+  detection:
+    interval: 30  # More frequent detection in development
+    thresholds:
+      network_anomaly: 0.7  # More sensitive
+      system_anomaly: 0.6   # More sensitive
+  
+  response:
+    auto_response: true
+    simulation_mode: true  # Don't make real changes in development
+  
+  analytics:
+    ml_enabled: true  # Enable ML for testing
+
+# More verbose logging
+logging:
+  level: "DEBUG"
+  
+# Enable API in development mode
+api:
+  enabled: true
+  port: 8000
+  require_auth: false

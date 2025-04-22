@@ -4,15 +4,14 @@ Threat detection module for the Autonomous Cybersecurity Defense Agent.
 
 import logging
 import time
-from typing import Dict, List, Any, Optional, Set
-from dataclasses import dataclass
-import ipaddress
 import re
 import socket
-import subprocess
 import platform
 import os
-import psutil  # Add missing import
+import ipaddress
+import psutil
+from typing import Dict, List, Any, Optional, Set
+from dataclasses import dataclass, field
 
 @dataclass
 class Threat:
@@ -20,14 +19,15 @@ class Threat:
     id: str
     type: str
     source: str
-    severity: int  # 1-5, where 5 is most severe
-    confidence: float  # 0.0-1.0
+    severity: int  # 1-5 scale (5 being most severe)
+    confidence: float  # 0.0-1.0 scale
     timestamp: float
-    details: Dict[str, Any]
+    details: Dict[str, Any] = field(default_factory=dict)
     resolved: bool = False
     resolution_time: Optional[float] = None
     resolution_action: Optional[str] = None
-
+    resolution_details: Dict[str, Any] = field(default_factory=dict)
+    
 class ThreatDetector:
     """Detects security threats across multiple sources."""
     
@@ -56,7 +56,7 @@ class ThreatDetector:
             "network_anomaly": 0.8,
             "system_anomaly": 0.7,
         })
-    
+
     def detect_threats(self) -> List[Threat]:
         """
         Run threat detection across all enabled modules.
@@ -187,9 +187,48 @@ class ThreatDetector:
         threats = []
         
         try:
-            # Implement log analysis logic here
-            # This would scan system logs, application logs, etc.
-            pass
+            # Implement log analysis logic - check for patterns in system logs
+            if platform.system() == "Linux":
+                # Example: Check for failed SSH login attempts
+                try:
+                    # This is a simplified example - in a real system you'd use a more robust approach
+                    with open("/var/log/auth.log", "r") as f:
+                        log_lines = f.readlines()
+                        
+                    # Count failed login attempts by IP address
+                    failed_logins = {}
+                    for line in log_lines:
+                        if "Failed password" in line and "sshd" in line:
+                            # Extract IP address
+                            match = re.search(r"from (\d+\.\d+\.\d+\.\d+)", line)
+                            if match:
+                                ip = match.group(1)
+                                failed_logins[ip] = failed_logins.get(ip, 0) + 1
+                    
+                    # Report IPs with many failed attempts
+                    for ip, count in failed_logins.items():
+                        if count >= 5:  # Threshold for suspicion
+                            threat_id = f"ssh-brute-force-{ip}-{int(time.time())}"
+                            threats.append(Threat(
+                                id=threat_id,
+                                type="brute_force_attempt",
+                                source=ip,
+                                severity=3,
+                                confidence=min(0.5 + (count / 20), 0.95),  # Higher count = higher confidence
+                                timestamp=time.time(),
+                                details={
+                                    "service": "ssh",
+                                    "failed_attempts": count,
+                                    "timeframe": "last 24 hours"  # Approximate
+                                }
+                            ))
+                except FileNotFoundError:
+                    pass  # Log file doesn't exist
+                    
+            elif platform.system() == "Windows":
+                # On Windows, we might query the Windows Event Log
+                # This is a placeholder for Windows log analysis
+                pass
             
         except Exception as e:
             self.logger.error(f"Error in log analysis: {e}", exc_info=True)
@@ -218,7 +257,7 @@ class ThreatDetector:
     
     def _get_network_connections(self) -> List[Dict[str, Any]]:
         """
-        Get current network connections.
+        Get information about network connections.
         
         Returns:
             List of dictionaries with connection information
@@ -226,32 +265,36 @@ class ThreatDetector:
         connections = []
         
         try:
-            net_connections = psutil.net_connections(kind='inet')
-            
-            for conn in net_connections:
-                if conn.laddr and conn.raddr:
-                    try:
-                        # Get process information if available
+            # Get all network connections
+            for conn in psutil.net_connections(kind='inet'):
+                try:
+                    # Get basic connection info
+                    if conn.laddr and conn.raddr:  # Only include connections with both local and remote addresses
+                        local = f"{conn.laddr.ip}:{conn.laddr.port}"
+                        remote = f"{conn.raddr.ip}:{conn.raddr.port}"
+                        
+                        # Get process info
                         process_name = ""
-                        if conn.pid:
-                            try:
+                        try:
+                            if conn.pid:
                                 process = psutil.Process(conn.pid)
                                 process_name = process.name()
-                            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                                pass
-                                
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass
+                            
                         connection_info = {
-                            'local': f"{conn.laddr.ip}:{conn.laddr.port}",
-                            'remote': f"{conn.raddr.ip}:{conn.raddr.port}",
-                            'state': conn.status,
+                            'local': local,
+                            'remote': remote,
+                            'status': conn.status,
                             'pid': conn.pid,
                             'process': process_name,
+                            'state': conn.status,
                             'anomaly_score': 0.0,
                             'anomaly_reasons': []
                         }
                         connections.append(connection_info)
-                    except Exception as e:
-                        self.logger.debug(f"Error processing connection: {e}")
+                except Exception as e:
+                    self.logger.debug(f"Error processing connection: {e}")
         except Exception as e:
             self.logger.error(f"Error getting network connections: {e}", exc_info=True)
             
@@ -302,7 +345,13 @@ class ThreatDetector:
                 if conn['pid'] and not conn['process']:
                     anomaly_score += 0.4
                     anomaly_reasons.append(f"Unknown process (PID: {conn['pid']}) with network activity")
-                    
+                
+                # Check for high-port to high-port connections (often suspicious)
+                local_port = int(conn['local'].split(':')[1])
+                if local_port > 32000 and remote_port > 32000:
+                    anomaly_score += 0.2
+                    anomaly_reasons.append(f"High-port to high-port connection: {local_port}->{remote_port}")
+                
                 # Apply final score
                 conn['anomaly_score'] = min(1.0, anomaly_score)
                 conn['anomaly_reasons'] = anomaly_reasons
@@ -392,7 +441,7 @@ class ThreatDetector:
             if proc['memory_percent'] > 50:
                 anomaly_score += 0.3
                 anomaly_reasons.append(f"High memory usage: {proc['memory_percent']}%")
-            
+                
             # Check for suspicious command line patterns
             if proc['cmdline']:
                 cmdline = ' '.join(proc['cmdline'])
@@ -417,10 +466,15 @@ class ThreatDetector:
         Get the status of the threat detector.
         
         Returns:
-            Dictionary with threat detector status information
+            Dictionary with detector status
         """
+        active_threats = [t for t in self.detected_threats if not t.resolved]
+        resolved_threats = [t for t in self.detected_threats if t.resolved]
+        
         return {
             "last_detection_time": self.last_detection_time,
             "total_threats_detected": len(self.detected_threats),
-            "active_threats": sum(1 for threat in self.detected_threats if not threat.resolved)
+            "active_threats": len(active_threats),
+            "resolved_threats": len(resolved_threats),
+            "enabled_modules": self.enabled_modules
         }
